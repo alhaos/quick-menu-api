@@ -1,0 +1,11 @@
+# quick-menu-api configuration file
+
+webServer:
+  address: ":8080"
+
+database:
+  host: alhaos.online
+  port: 3456
+  user: quickmenu
+  pass: kuk@Zumba!
+  database: quickmenu
