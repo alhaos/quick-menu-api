@@ -1,3 +1,9 @@
 package utils
 
-const Timeout = 5000
+import "time"
+
+const timeout = 5000
+
+func Timeout() time.Duration {
+	return time.Millisecond * timeout
+}

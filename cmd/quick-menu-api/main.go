@@ -2,9 +2,12 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/alhaos/quick-menu-api/internal/config"
+	"github.com/alhaos/quick-menu-api/internal/controller"
 	"github.com/alhaos/quick-menu-api/internal/database"
-	"github.com/alhaos/quick-menu-api/internal/repo"
+	"github.com/alhaos/quick-menu-api/internal/repository"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -28,7 +31,20 @@ func main() {
 
 	defer dbConnection.Close()
 
-	// Init repository
-	_ = repo.New(dbConnection)
+	// Init repo
+	repo := repository.New(dbConnection)
+
+	// Init controller
+	ctrl := controller.New(repo)
+
+	// Init router
+	router := gin.Default()
+	controller.SetupRouter(router, ctrl)
+
+	// Run service
+	err = router.Run(fmt.Sprintf("%s:%d", conf.Address.Hostname, conf.Address.Port))
+	if err != nil {
+		panic(err)
+	}
 
 }

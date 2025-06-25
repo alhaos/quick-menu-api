@@ -1,38 +1,43 @@
-package repo
+package repository
 
 import (
 	"context"
 	"github.com/alhaos/quick-menu-api/internal/model"
 	"github.com/alhaos/quick-menu-api/internal/utils"
-	"time"
 )
 
-// NewItem ...
-func (r *Repository) NewItem(clientID string) (*model.Item, error) {
+// CreateItem ...
+func (r *Repository) CreateItem(clientID string, item *model.Item) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*utils.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), utils.Timeout())
 	defer cancel()
 
-	const query = "INSERT INTO client_data.items (client_id) VALUES ($1) RETURNING id"
+	query := `
+INSERT INTO 
+       client_data.items (client_id, name, description, image_filename, is_active)
+VALUES ($1, $2, $3, $4) RETURNING id`
 
-	var id string
-
-	err := r.db.QueryRowEx(ctx, query, nil, clientID).Scan(&id)
+	err := r.db.QueryRowEx(
+		ctx,
+		query,
+		nil,
+		clientID,
+		item.Name,
+		item.Description,
+		item.ImageFilename,
+		item.IsActive,
+	).Scan(&item.ID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	item := model.Item{
-		ID: id,
-	}
-
-	return &item, nil
+	return nil
 }
 
 // GetItemById ...
 func (r *Repository) GetItemById(id string) (model.Item, error) {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*utils.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), utils.Timeout())
 	defer cancel()
 
 	const query = `
@@ -54,7 +59,7 @@ func (r *Repository) GetItemById(id string) (model.Item, error) {
 // RemoveItemById ...
 func (r *Repository) RemoveItemById(id string) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*utils.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), utils.Timeout())
 	defer cancel()
 
 	const query = `DELETE FROM client_data.items WHERE id = $1`
@@ -71,7 +76,7 @@ func (r *Repository) RemoveItemById(id string) error {
 // UpdateItem ...
 func (r *Repository) UpdateItem(item *model.Item) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*utils.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), utils.Timeout())
 	defer cancel()
 
 	const query = `
