@@ -6,6 +6,6 @@ address:
 database:
   host: alhaos.online
   port: 5432
-  user: quickmenu
-  pass: kuk@Zumba!
-  database: quickmenu
+  user: qm_owner
+  pass: kuk2Zumba!
+  database: quick_menu

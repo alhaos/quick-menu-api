@@ -15,11 +15,12 @@ func (c *Controller) LoginController(gc *gin.Context) {
 	err := gc.ShouldBindJSON(&u)
 	if err != nil {
 		gc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
 	userID, err := c.repo.Login(u)
 	if err != nil {
-		gc.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		gc.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -28,4 +29,11 @@ func (c *Controller) LoginController(gc *gin.Context) {
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	})
 
+	tokenString, err := token.SignedString([]byte(c.secret))
+	if err != nil {
+		gc.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	gc.JSON(http.StatusOK, gin.H{"token": tokenString})
 }

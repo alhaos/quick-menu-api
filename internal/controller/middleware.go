@@ -1,25 +1,20 @@
-package middleware
+package controller
 
 import (
 	"fmt"
-	"github.com/alhaos/quick-menu-api/internal/auth"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"net/http"
 	"strings"
 )
 
-func AuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (c *Controller) AuthMiddleware() gin.HandlerFunc {
+	return func(gc *gin.Context) {
 
-		if c.Request.URL.Path == "/login" {
-			c.Next()
-			return
-		}
-
-		authHeader := c.GetHeader("Authorization")
+		authHeader := gc.GetHeader("Authorization")
 		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header missing"})
+			gc.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header missing"})
+			return
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
@@ -28,18 +23,18 @@ func AuthMiddleware() gin.HandlerFunc {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
-			return auth.JWTSecret, nil
+			return c.secret, nil
 		})
 
 		if err != nil || !token.Valid {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			gc.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			return
 		}
 
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			c.Set("username", claims["username"])
+			gc.Set("user_id", claims["user_id"])
 		}
 
-		c.Next()
+		gc.Next()
 	}
 }

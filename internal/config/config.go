@@ -10,7 +10,7 @@ import (
 type Configuration struct {
 	Database database.Config `yaml:"database"`
 	Address  Address         `yaml:"address"`
-	Secret   string          `yaml:"-" env:"QUICK_MENU_SECRET,required"`
+	Secret   []byte          `yaml:"-" env:"QUICK_MENU_SECRET,required"`
 }
 
 type Address struct {
@@ -58,6 +58,6 @@ func New(filename string) (*Configuration, error) {
 	if secret == "" {
 		return nil, fmt.Errorf("environment variable QUICK_MENU_SECRET is not set")
 	}
-	c.Secret = secret
+	c.Secret = []byte(secret)
 	return c, nil
 }

@@ -16,7 +16,12 @@ func (c *Controller) CreateItemController(gc *gin.Context) {
 		return
 	}
 
-	err = c.repo.CreateItem(&item)
+	client_id, exist := gc.Get("client_id")
+	if !exist {
+		gc.JSON(http.StatusInternalServerError, gin.H{"error": "client id not set"})
+	}
+
+	err = c.repo.CreateItem(client_id.(string), &item)
 	if err != nil {
 		gc.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

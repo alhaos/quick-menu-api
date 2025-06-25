@@ -35,7 +35,7 @@ func main() {
 	repo := repository.New(dbConnection)
 
 	// Init controller
-	ctrl := controller.New(repo)
+	ctrl := controller.New(repo, conf.Secret)
 
 	// Init router
 	router := gin.Default()

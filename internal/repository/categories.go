@@ -103,7 +103,7 @@ func (r *Repository) ListAllCategories(clientID string) ([]model.Category, error
 
 	var categories []model.Category
 
-	query := `SELECT id, client_id, name, description FROM client_data.categories WHERE client_Id=$1;`
+	query := `SELECT id, user_id, name, description FROM categories WHERE user_id=$1;`
 
 	rows, err := r.db.QueryEx(ctx, query, nil, clientID)
 
