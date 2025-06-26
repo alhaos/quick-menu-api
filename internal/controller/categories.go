@@ -30,7 +30,7 @@ func (c *Controller) CreateCategoryController(gc *gin.Context) {
 func (c *Controller) GetCategoryByIdController(gc *gin.Context) {
 
 	id := gc.Param("id")
-	clientId := gc.Param("clientId")
+	clientId := gc.Param("extractClientId")
 
 	category, err := c.repo.GetCategoryByID(id, clientId)
 	if err != nil {

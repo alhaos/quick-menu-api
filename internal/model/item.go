@@ -7,3 +7,12 @@ type Item struct {
 	ImageFilename string
 	IsActive      bool
 }
+
+func MockItem() Item {
+	return Item{
+		Name:          "Шашлык",
+		Description:   "Очень вкусный шашлык ",
+		ImageFilename: "image.jpg",
+		IsActive:      false,
+	}
+}

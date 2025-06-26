@@ -19,23 +19,20 @@ func SetupRouter(router *gin.Engine, c *Controller) {
 
 	api := router.Group("/api")
 	{
-		clients := api.Group("/clients")
+		categories := api.Group("/categories")
 		{
-			client := clients.Group("/:client_id")
-			{
-				categories := client.Group("/categories")
-				{
-					categories.POST("", c.AuthMiddleware(), c.CreateCategoryController)
-					categories.GET("/:id", c.AuthMiddleware(), c.GetCategoryByIdController)
-					categories.PATCH("", c.AuthMiddleware(), c.UpdateCategoryController)
-					categories.DELETE("/:id", c.AuthMiddleware(), c.DeleteCategoryByIdController)
-					categories.GET("", c.AuthMiddleware(), c.ListAllCategoriesController)
-				}
-				items := client.Group("/items")
-				{
-					items.POST("", c.CreateItemController)
-				}
-			}
+			categories.POST("", c.AuthMiddleware, c.CreateCategoryController)
+			categories.GET("/:id", c.AuthMiddleware, c.GetCategoryByIdController)
+			categories.PATCH("", c.AuthMiddleware, c.UpdateCategoryController)
+			categories.DELETE("/:id", c.AuthMiddleware, c.DeleteCategoryByIdController)
+			categories.GET("", c.AuthMiddleware, c.ListAllCategoriesController)
+		}
+
+		items := api.Group("/items")
+		{
+			items.POST("", c.AuthMiddleware, c.CreateItemController)
+			items.GET("/:id", c.AuthMiddleware, c.GetItemByIdController)
+			items.DELETE("/:id", c.AuthMiddleware, c.DeleteItemByIdController)
 		}
 
 		login := api.Group("/login")
