@@ -8,11 +8,11 @@ import (
 
 func (c *Controller) CreateCategoryController(gc *gin.Context) {
 
-	clientID := gc.Param("client_id")
+	clientID, err := extractClientId(gc)
 
 	category := model.Category{}
 
-	err := gc.ShouldBindJSON(&category)
+	err = gc.ShouldBindJSON(&category)
 	if err != nil {
 		gc.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -29,10 +29,11 @@ func (c *Controller) CreateCategoryController(gc *gin.Context) {
 
 func (c *Controller) GetCategoryByIdController(gc *gin.Context) {
 
-	id := gc.Param("id")
-	clientId := gc.Param("extractClientId")
+	clientID, err := extractClientId(gc)
 
-	category, err := c.repo.GetCategoryByID(id, clientId)
+	id := gc.Param("id")
+
+	category, err := c.repo.GetCategoryByID(clientID, id)
 	if err != nil {
 		gc.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -43,10 +44,10 @@ func (c *Controller) GetCategoryByIdController(gc *gin.Context) {
 
 func (c *Controller) UpdateCategoryController(gc *gin.Context) {
 
-	clientID := gc.Param("client_id")
+	clientID, err := extractClientId(gc)
 
 	category := model.Category{}
-	err := gc.ShouldBindJSON(&category)
+	err = gc.ShouldBindJSON(&category)
 	if err != nil {
 		gc.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -58,15 +59,16 @@ func (c *Controller) UpdateCategoryController(gc *gin.Context) {
 		return
 	}
 
-	gc.JSON(http.StatusOK, gin.H{"category": category})
+	gc.JSON(http.StatusOK, category)
 }
 
 func (c *Controller) DeleteCategoryByIdController(gc *gin.Context) {
 
 	id := gc.Param("id")
-	clientID := gc.Param("client_id")
 
-	err := c.repo.DeleteCategoryByID(clientID, id)
+	clientID, err := extractClientId(gc)
+
+	err = c.repo.DeleteCategoryByID(clientID, id)
 	if err != nil {
 		gc.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -77,7 +79,7 @@ func (c *Controller) DeleteCategoryByIdController(gc *gin.Context) {
 
 func (c *Controller) ListAllCategoriesController(gc *gin.Context) {
 
-	clientID := gc.Param("client_id")
+	clientID, err := extractClientId(gc)
 
 	categories, err := c.repo.ListAllCategories(clientID)
 	if err != nil {
@@ -85,5 +87,5 @@ func (c *Controller) ListAllCategoriesController(gc *gin.Context) {
 		return
 	}
 
-	gc.JSON(http.StatusOK, gin.H{"categories": categories})
+	gc.JSON(http.StatusOK, categories)
 }

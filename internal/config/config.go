@@ -2,15 +2,16 @@ package config
 
 import (
 	"fmt"
+	"github.com/alhaos/quick-menu-api/internal/authService"
 	"github.com/alhaos/quick-menu-api/internal/database"
 	"github.com/ilyakaznacheev/cleanenv"
 	"os"
 )
 
 type Configuration struct {
-	Database database.Config `yaml:"database"`
-	Address  Address         `yaml:"address"`
-	Secret   []byte          `yaml:"-" env:"QUICK_MENU_SECRET,required"`
+	Database    database.Config `yaml:"database"`
+	Address     Address         `yaml:"address"`
+	AuthService authService.Config
 }
 
 type Address struct {
@@ -58,6 +59,6 @@ func New(filename string) (*Configuration, error) {
 	if secret == "" {
 		return nil, fmt.Errorf("environment variable QUICK_MENU_SECRET is not set")
 	}
-	c.Secret = []byte(secret)
+	c.AuthService.Secret = []byte(secret)
 	return c, nil
 }

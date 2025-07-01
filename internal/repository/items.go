@@ -37,7 +37,7 @@ INSERT INTO public.items(
 		nil,
 		item.Name,
 		item.Description,
-		item.ImageFilename,
+		item.Image,
 		item.IsActive,
 	).Scan(&item.ID)
 	if err != nil {
@@ -75,12 +75,13 @@ func (r *Repository) GetItemById(clientID string, id string) (*model.Item, error
 	       coalesce(name, ''),
 	       coalesce(description, ''),
 	       coalesce(image, ''),
+	       coalesce(price, ''),
            is_active
 	  FROM items
 	 WHERE id = $1`
 
 	var item model.Item
-	err = tx.QueryRowEx(ctx, query, nil, id).Scan(&item.ID, &item.Name, &item.Description, &item.ImageFilename, &item.IsActive)
+	err = tx.QueryRowEx(ctx, query, nil, id).Scan(&item.ID, &item.Name, &item.Description, &item.Image, &item.Price, &item.IsActive)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, errors.New("no item found")
 	}
@@ -135,24 +136,94 @@ func (r *Repository) DeleteItemById(clientID string, id string) error {
 }
 
 // UpdateItem ...
-func (r *Repository) UpdateItem(item *model.Item) error {
+func (r *Repository) UpdateItem(clientID string, item *model.Item) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), utils.Timeout())
 	defer cancel()
 
-	const query = `
-UPDATE client_data.items
-   SET name = $1,
-       description = $2,
-       image_filename = $3,
-       is_active = $4 
- WHERE id = $5`
-
-	_, err := r.db.ExecEx(ctx, query, nil, item.Name, item.Description, item.ImageFilename, item.IsActive, item.ID)
+	tx, err := r.db.BeginEx(ctx, nil)
 	if err != nil {
 		return err
 	}
+
+	err = setSessionClientId(clientID, tx, ctx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	const query = `
+UPDATE items
+   SET name = $1,
+       description = $2,
+       image = $3,
+       price = $4,
+       is_active = $5 
+ WHERE id = $6`
+
+	res, err := tx.ExecEx(ctx, query, nil, item.Name, item.Description, item.Image, item.Price, item.IsActive, item.ID)
+	if err != nil {
+		return err
+	}
+
+	if res.RowsAffected() == 0 {
+		tx.Rollback()
+		return errors.New("no item found")
+	}
+
+	err = tx.Commit()
+
 	return nil
+}
+
+// ListItems ...
+func (r *Repository) ListItems(clientID string) ([]model.Item, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), utils.Timeout())
+	defer cancel()
+
+	tx, err := r.db.BeginEx(ctx, nil)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	err = setSessionClientId(clientID, tx, ctx)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	const query = `
+	SELECT id,
+	       coalesce(name, ''),
+	       coalesce(description, ''),
+	       coalesce(image, ''),
+	       coalesce(price, ''),
+           is_active
+	  FROM items`
+
+	var items []model.Item
+	var item model.Item
+
+	rows, err := tx.QueryEx(ctx, query, nil)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		err = rows.Scan(&item.ID, &item.Name, &item.Description, &item.Image, &item.Price, &item.IsActive)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+
+	return items, nil
 }
 
 // setSessionClientId

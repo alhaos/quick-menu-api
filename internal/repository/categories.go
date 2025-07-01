@@ -2,50 +2,84 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/alhaos/quick-menu-api/internal/model"
 	"github.com/alhaos/quick-menu-api/internal/utils"
-	"time"
 )
 
 func (r *Repository) CreateCategory(clientID string, category *model.Category) error {
 
-	timeout := time.Millisecond * utils.Timeout()
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), utils.Timeout())
 	defer cancel()
 
-	const query = `INSERT INTO client_data.categories (client_id, name, description) values ($1, $2, $3) RETURNING id;`
+	tx, err := r.db.BeginEx(ctx, nil)
+	if err != nil {
+		return err
+	}
 
-	err := r.db.QueryRowEx(
+	err = setSessionClientId(clientID, tx, ctx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	const query = `INSERT INTO categories (name, description, image) values ($1, $2, $3) RETURNING id;`
+
+	err = r.db.QueryRowEx(
 		ctx,
 		query,
 		nil,
-		clientID,
 		category.Name,
 		category.Description,
+		category.Image,
 	).Scan(&category.ID)
 
 	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	err = tx.CommitEx(ctx)
+	if err != nil {
+		tx.Rollback()
 		return err
 	}
 
 	return nil
 }
 
-func (r *Repository) GetCategoryByID(id string, clientID string) (*model.Category, error) {
+func (r *Repository) GetCategoryByID(clientID string, id string) (*model.Category, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), utils.Timeout())
 	defer cancel()
 
+	tx, err := r.db.BeginEx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	err = setSessionClientId(clientID, tx, ctx)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
 	var category model.Category
 
-	query := `SELECT id, name, description FROM client_data.categories WHERE id = $1 and client_Id=$2;`
+	query := `SELECT id, name, description FROM categories WHERE id = $1;`
 
-	row := r.db.QueryRowEx(ctx, query, nil, id, clientID)
+	row := tx.QueryRowEx(ctx, query, nil, id)
 
-	err := row.Scan(&category.ID, &category.Name, &category.Description)
+	err = row.Scan(&category.ID, &category.Name, &category.Description)
 	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	err = tx.CommitEx(ctx)
+	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 
@@ -57,22 +91,39 @@ func (r *Repository) UpdateCategory(clientID string, category *model.Category) e
 	ctx, cancel := context.WithTimeout(context.Background(), utils.Timeout())
 	defer cancel()
 
-	query := "UPDATE client_data.categories SET name = $1, description = $2 WHERE id = $3 and client_id = $4 RETURNING id, client_id, name, description;"
+	tx, err := r.db.BeginEx(ctx, nil)
+	if err != nil {
+		return err
+	}
 
-	err := r.db.QueryRowEx(
+	err = setSessionClientId(clientID, tx, ctx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	query := "UPDATE categories SET name = $1, description = $2, image = $3 WHERE id = $4"
+
+	res, err := r.db.ExecEx(
 		ctx,
 		query,
 		nil,
 		category.Name,
 		category.Description,
+		category.Image,
 		category.ID,
-		clientID,
-	).Scan(
-		&category.ID,
-		&category.Name,
-		&category.Description,
 	)
 	if err != nil {
+		return err
+	}
+
+	if res.RowsAffected() == 0 {
+		return errors.New("no such category found")
+	}
+
+	err = tx.CommitEx(ctx)
+	if err != nil {
+		tx.Rollback()
 		return err
 	}
 
@@ -83,14 +134,32 @@ func (r *Repository) DeleteCategoryByID(clientID string, id string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), utils.Timeout())
 	defer cancel()
-	query := "DELETE FROM client_data.categories WHERE id = $1 and client_id = $2;"
-	ex, err := r.db.ExecEx(ctx, query, nil, id, clientID)
+
+	tx, err := r.db.BeginEx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	err = setSessionClientId(clientID, tx, ctx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	query := "DELETE FROM categories WHERE id = $1;"
+	ex, err := tx.ExecEx(ctx, query, nil, id)
 	if err != nil {
 		return err
 	}
 
 	if ex.RowsAffected() == 0 {
 		return fmt.Errorf("category with id: [%s] does not exist", id)
+	}
+
+	err = tx.CommitEx(ctx)
+	if err != nil {
+		tx.Rollback()
+		return err
 	}
 
 	return nil
@@ -101,19 +170,28 @@ func (r *Repository) ListAllCategories(clientID string) ([]model.Category, error
 	ctx, cancel := context.WithTimeout(context.Background(), utils.Timeout())
 	defer cancel()
 
+	tx, err := r.db.BeginEx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	err = setSessionClientId(clientID, tx, ctx)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
 	var categories []model.Category
 
-	query := `SELECT id, user_id, name, description FROM categories WHERE user_id=$1;`
+	query := `SELECT id, name, description, image FROM categories WHERE user_id=$1;`
 
 	rows, err := r.db.QueryEx(ctx, query, nil, clientID)
-
 	if err != nil {
 		return nil, err
 	}
 
 	for rows.Next() {
 		var category model.Category
-		err = rows.Scan(&category.ID, &category.Name, &category.Description)
+		err = rows.Scan(&category.ID, &category.Name, &category.Description, &category.Image)
 		if err != nil {
 			return nil, err
 		}

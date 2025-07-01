@@ -33,6 +33,7 @@ func (c *Controller) CreateItemController(gc *gin.Context) {
 	gc.JSON(http.StatusCreated, item)
 }
 
+// GetItemByIdController ...
 func (c *Controller) GetItemByIdController(gc *gin.Context) {
 
 	id := gc.Param("id")
@@ -52,19 +53,6 @@ func (c *Controller) GetItemByIdController(gc *gin.Context) {
 	}
 
 	gc.JSON(http.StatusOK, item)
-}
-
-// extractClientId extract client_id variable from gin context
-func extractClientId(gc *gin.Context) (string, error) {
-	id, exist := gc.Get("user_id")
-	if !exist {
-		return "", errors.New("user_id not found in context")
-	}
-	idString, ok := id.(string)
-	if !ok {
-		return "", errors.New("user_id string convert failed")
-	}
-	return idString, nil
 }
 
 // DeleteItemByIdController ...
@@ -87,4 +75,62 @@ func (c *Controller) DeleteItemByIdController(gc *gin.Context) {
 	}
 
 	gc.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("item with id %s removed", id)})
+}
+
+// UpdateItemByIdController ...
+func (c *Controller) UpdateItemByIdController(gc *gin.Context) {
+
+	var item model.Item
+
+	err := gc.ShouldBindJSON(&item)
+	if err != nil {
+		gc.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	clientId, err := extractClientId(gc)
+	if err != nil {
+		gc.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
+
+	err = c.repo.UpdateItem(clientId, &item)
+	if err != nil {
+		gc.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	gc.JSON(http.StatusOK, item)
+}
+
+func (c *Controller) ListAllItemsController(gc *gin.Context) {
+
+	var items []model.Item
+
+	clientId, err := extractClientId(gc)
+	if err != nil {
+		gc.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	items, err = c.repo.ListItems(clientId)
+	if err != nil {
+		gc.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	gc.JSON(http.StatusOK, items)
+
+}
+
+// extractClientId extract client_id variable from gin context
+func extractClientId(gc *gin.Context) (string, error) {
+	id, exist := gc.Get("user_id")
+	if !exist {
+		return "", errors.New("user_id not found in context")
+	}
+	idString, ok := id.(string)
+	if !ok {
+		return "", errors.New("user_id string convert failed")
+	}
+	return idString, nil
 }

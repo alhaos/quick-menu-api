@@ -1,38 +1,34 @@
 package controller
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"net/http"
-	"strings"
 )
 
 func (c *Controller) AuthMiddleware(gc *gin.Context) {
 
-	authHeader := gc.GetHeader("Authorization")
-	if authHeader == "" {
-		gc.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header missing"})
+	cookieToken, _ := gc.Cookie("authToken")
+
+	authHeaderToken := gc.GetHeader("Authorization")
+
+	var finalToken string
+
+	switch {
+	case cookieToken != "":
+		finalToken = cookieToken
+	case authHeaderToken != "":
+		finalToken = authHeaderToken
+	default:
+		gc.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authorization token missing"})
 		return
 	}
 
-	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return c.secret, nil
-	})
-
-	if err != nil || !token.Valid {
-		gc.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-		return
+	userID, err := c.auth.CheckToken(finalToken)
+	if err != nil {
+		gc.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 	}
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok {
-		gc.Set("user_id", claims["user_id"])
-	}
+	gc.Set("user_id", userID)
 
 	gc.Next()
 	return

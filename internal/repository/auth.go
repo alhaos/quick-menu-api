@@ -2,10 +2,10 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"github.com/alhaos/quick-menu-api/internal/model"
 	"github.com/alhaos/quick-menu-api/internal/utils"
+	"github.com/jackc/pgx"
 	"time"
 )
 
@@ -28,8 +28,8 @@ func (r *Repository) Login(user model.User) (string, error) {
 	var passwordHash, id string
 	row := r.db.QueryRowEx(ctx, query, nil, user.Name)
 	err := row.Scan(&passwordHash, &id)
-	if errors.Is(err, sql.ErrNoRows) {
-		return "", errors.New("user not found")
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", errors.New("login failed")
 	}
 	if err != nil {
 		return "", err
@@ -37,7 +37,7 @@ func (r *Repository) Login(user model.User) (string, error) {
 
 	if !utils.VerifyPassword(user.Password, passwordHash) {
 		time.Sleep(100 * time.Millisecond)
-		return "", errors.New("invalid password")
+		return "", errors.New("login failed")
 	}
 
 	return id, nil

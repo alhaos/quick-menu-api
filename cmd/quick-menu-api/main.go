@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/alhaos/quick-menu-api/internal/authService"
 	"github.com/alhaos/quick-menu-api/internal/config"
 	"github.com/alhaos/quick-menu-api/internal/controller"
 	"github.com/alhaos/quick-menu-api/internal/database"
@@ -34,11 +35,15 @@ func main() {
 	// Init repo
 	repo := repository.New(dbConnection)
 
+	// Init auth service
+	auth := authService.New(conf.AuthService, repo)
+
 	// Init controller
-	ctrl := controller.New(repo, conf.Secret)
+	ctrl := controller.New(repo, auth)
 
 	// Init router
 	router := gin.Default()
+
 	controller.SetupRouter(router, ctrl)
 
 	// Run service
