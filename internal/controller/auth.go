@@ -108,9 +108,12 @@ func (c *Controller) LoginController(gc *gin.Context) {
 	gc.JSON(http.StatusOK, gin.H{"token": tokenString})
 }
 
-// AuthCheckController checks for the presence of a token in the session or Cookie or in the Authorization header
+// AuthCheckController Checks tokens provided via cookies and the authorization header, the token provided via cookies
+// takes priority. Receives JSON {name: string, password string } as input and sends {authenticated: bool, userID:
+// string } as response
 func (c *Controller) AuthCheckController(gc *gin.Context) {
 
+	// Get token from cookie
 	tokenInCookie, err := gc.Cookie("authToken")
 	if err != nil {
 		gc.AbortWithStatusJSON(
@@ -120,22 +123,27 @@ func (c *Controller) AuthCheckController(gc *gin.Context) {
 		return
 	}
 
+	// Get token from header
 	tokenInHeader := gc.GetHeader("Authorization")
 
 	var tokenSelected string
 
+	// Select not empty token
+	// if both token is not empty? take cookie token
 	switch {
 	case tokenInHeader != "":
 		tokenSelected = tokenInHeader
 	case tokenInCookie != "":
 		tokenSelected = tokenInCookie
 	default:
+		// if both token is empty rise error
 		gc.JSON(http.StatusUnauthorized,
 			gin.H{"error": "token not provided"},
 		)
 		return
 	}
 
+	// validate token
 	userID, err := c.auth.CheckToken(tokenSelected)
 	if err != nil {
 		gc.AbortWithStatusJSON(
@@ -146,8 +154,8 @@ func (c *Controller) AuthCheckController(gc *gin.Context) {
 	}
 
 	gc.JSON(http.StatusOK, gin.H{
-		"authenticated": true,
-		"user_id":       userID})
+		"authorized": true,
+		"userID":     userID})
 }
 
 // LogoffController remove authToken from Cookie
